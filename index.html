@@ -113,11 +113,24 @@
 
   .incidents { margin-top: 34px; }
   .incidents h2 { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
-  .inc { border: 1px solid var(--line); border-radius: 10px; padding: 13px 16px; background: var(--panel); margin-bottom: 10px; }
-  .inc .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .inc { border: 1px solid var(--line); border-radius: 10px; padding: 0; background: var(--panel); margin-bottom: 10px; overflow: hidden; }
+  .inc summary, .inc .row-static {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding: 13px 16px; cursor: pointer; list-style: none; user-select: none;
+  }
+  .inc .row-static { cursor: default; }
+  .inc summary::-webkit-details-marker { display: none; }
+  .inc summary:hover { background: var(--panel-2); }
+  .inc summary:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 10px; }
   .inc b { font-size: 14px; }
   .inc .when { font-size: 12px; color: var(--faint); margin-left: auto; white-space: nowrap; }
-  .inc p { font-size: 13px; color: var(--muted); margin: 5px 0 0; }
+  .inc .chev {
+    align-self: center; flex: 0 0 auto; width: 14px; height: 14px;
+    color: var(--faint); transition: transform .18s ease;
+  }
+  .inc[open] .chev { transform: rotate(180deg); }
+  @media (prefers-reduced-motion: reduce) { .inc .chev { transition: none; } }
+  .inc p { font-size: 13px; color: var(--muted); margin: 0; padding: 0 16px 13px; }
   .none { color: var(--faint); font-size: 13.5px; }
 
   footer { margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--faint); display: flex; gap: 16px; flex-wrap: wrap; }
@@ -288,15 +301,22 @@ function renderBanner(overall, uptime, activeUpdates) {
     </div>`).join('')
 }
 
+const CHEV = '<svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+
 function renderIncidents(resolved) {
   const wrap = $('incidents')
   if (!resolved.length) { wrap.innerHTML = '<p class="none">No incidents in the last 90 days.</p>'; return }
-  wrap.innerHTML = resolved.map((u) => `
-    <div class="inc">
-      <div class="head"><span class="sev ${esc(u.severity)}">${esc(u.severity)}</span><b>Resolved · ${esc(u.title)}</b>
-        <span class="when">${esc(rangeLabel(u.createdAt, u.resolvedAt))}</span></div>
-      ${u.body ? `<p>${esc(u.body)}</p>` : ''}
-    </div>`).join('')
+  wrap.innerHTML = resolved.map((u) => {
+    const head = `<span class="sev ${esc(u.severity)}">${esc(u.severity)}</span><b>Resolved · ${esc(u.title)}</b>
+        <span class="when">${esc(rangeLabel(u.createdAt, u.resolvedAt))}</span>`
+    // No detail text = nothing to expand; render a plain row without a chevron.
+    if (!u.body) return `<div class="inc"><div class="row-static">${head}</div></div>`
+    return `
+    <details class="inc">
+      <summary>${head}${CHEV}</summary>
+      <p>${esc(u.body)}</p>
+    </details>`
+  }).join('')
 }
 
 async function fetchJson(url) {
