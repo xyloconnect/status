@@ -1,3 +1,6 @@
-*
-!index.html
-!favicon.ico
+.git
+.github
+probe
+README.md
+CNAME
+.gitignore
