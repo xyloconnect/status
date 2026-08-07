@@ -330,7 +330,9 @@ async function liveChecks() {
 
 async function load() {
   let history = null, updates = []
-  try { history = await fetchJson(HISTORY_URL) } catch { /* first runs may not exist yet */ }
+  // The 5-minute bucket in the query defeats raw.githubusercontent's edge
+  // cache deterministically (each bucket is a fresh URL to the CDN).
+  try { history = await fetchJson(`${HISTORY_URL}?t=${Math.floor(Date.now() / 300000)}`) } catch { /* first runs may not exist yet */ }
   try {
     const data = await fetchJson(UPDATES_URL)
     updates = Array.isArray(data?.updates) ? data.updates : []
