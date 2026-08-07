@@ -156,7 +156,7 @@
   </section>
 
   <footer>
-    <span>Checks run every 5 minutes.</span>
+    <span>Automated checks run every few minutes; core services are also re-checked live when this page loads.</span>
     <a href="https://xyloconnect.com">xyloconnect.com</a>
   </footer>
 </main>
@@ -306,6 +306,7 @@ async function fetchJson(url) {
 }
 
 async function liveChecks() {
+  let anyOk = false
   await Promise.all(LIVE_CHECKS.map(async (check) => {
     let label
     try {
@@ -313,9 +314,9 @@ async function liveChecks() {
       const res = await fetch(check.url, { signal: AbortSignal.timeout(15000) })
       const body = res.ok ? await res.json().catch(() => null) : null
       const secs = ((Date.now() - started) / 1000).toFixed(1)
-      label = res.ok && body?.timeout !== true && body?.ok !== false
-        ? `live check just now · ${secs}s`
-        : 'live check failed just now'
+      const ok = res.ok && body?.timeout !== true && body?.ok !== false
+      if (ok) anyOk = true
+      label = ok ? `live check just now · ${secs}s` : 'live check failed just now'
     } catch {
       label = 'live check failed just now'
     }
@@ -324,6 +325,7 @@ async function liveChecks() {
       if (el) el.textContent = label
     }
   }))
+  return anyOk
 }
 
 async function load() {
@@ -342,11 +344,14 @@ async function load() {
   const { overall, uptime } = renderComponents(history)
   renderBanner(overall, uptime, active)
   renderIncidents(resolved)
-  $('updated').textContent = history?.updatedAt
-    ? `Updated ${agoLabel(history.updatedAt)} · checks run every 5 minutes`
+  const historyLabel = history?.updatedAt
+    ? `History updated ${agoLabel(history.updatedAt)}`
     : 'Collecting first checks…'
+  $('updated').textContent = historyLabel
 
-  liveChecks()
+  liveChecks().then((anyOk) => {
+    if (anyOk) $('updated').textContent = `Checked just now · ${historyLabel.charAt(0).toLowerCase()}${historyLabel.slice(1)}`
+  })
 }
 load()
 setInterval(load, 5 * 60000)
