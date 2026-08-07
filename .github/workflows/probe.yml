@@ -1,0 +1,42 @@
+name: probe
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: probe
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          ref: data
+          path: data-branch
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run probes
+        run: node probe/probe.mjs data-branch/history.json
+
+      - name: Commit history
+        working-directory: data-branch
+        run: |
+          git config user.name 'status-probe'
+          git config user.email 'status-probe@users.noreply.github.com'
+          git add history.json
+          git diff --cached --quiet && exit 0
+          git commit -m "probe $(date -u +'%Y-%m-%dT%H:%M')"
+          git push origin data
